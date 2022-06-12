@@ -18,20 +18,32 @@
 #define LCD_BACKLIGHT_ON() digitalWrite(LCD_BL_PIN, HIGH)
 #define LCD_BACKLIGHT_OFF() digitalWrite(LCD_BL_PIN, LOW)
 
+static const uint32_t LCD_DATA_PIN_MASK = ~(
+  (1UL << LCD_D0_PIN) |
+  (1UL << LCD_D1_PIN) |
+  (1UL << LCD_D2_PIN) |
+  (1UL << LCD_D3_PIN) |
+  (1UL << LCD_D4_PIN) |
+  (1UL << LCD_D5_PIN) |
+  (1UL << LCD_D6_PIN) |
+  (1UL << LCD_D7_PIN)
+);
+
 void DirectIOWrite(uint8_t data) {
-  digitalWrite(LCD_DE_PIN, HIGH);
-  digitalWrite(LCD_D0_PIN, (data >> 0) & 0x01);
-  digitalWrite(LCD_D1_PIN, (data >> 1) & 0x01);
-  digitalWrite(LCD_D2_PIN, (data >> 2) & 0x01);
-  digitalWrite(LCD_D3_PIN, (data >> 3) & 0x01);
-  digitalWrite(LCD_D4_PIN, (data >> 4) & 0x01);
-  digitalWrite(LCD_D5_PIN, (data >> 5) & 0x01);
-  digitalWrite(LCD_D6_PIN, (data >> 6) & 0x01);
-  digitalWrite(LCD_D7_PIN, (data >> 7) & 0x01);
-  // delayMicroseconds(10);
-  
-  // delayMicroseconds(10);
-  digitalWrite(LCD_DE_PIN, LOW);
+  GPIO.out = (GPIO.out & LCD_DATA_PIN_MASK) | 
+                (
+                  (((data >> 0) & 0x01) << LCD_D0_PIN) |
+                  (((data >> 1) & 0x01) << LCD_D1_PIN) |
+                  (((data >> 2) & 0x01) << LCD_D2_PIN) |
+                  (((data >> 3) & 0x01) << LCD_D3_PIN) |
+                  (((data >> 4) & 0x01) << LCD_D4_PIN) |
+                  (((data >> 5) & 0x01) << LCD_D5_PIN) |
+                  (((data >> 6) & 0x01) << LCD_D6_PIN) |
+                  (((data >> 7) & 0x01) << LCD_D7_PIN)
+                ) |
+                (1 << LCD_DE_PIN) // Send data with DE HIGH*/
+            ;
+  GPIO.out_w1tc = 1 << LCD_DE_PIN; // DE set to LOW
 }
 
 void WriteComm(uint8_t data) {
