@@ -10,15 +10,29 @@
 static const uint16_t screenWidth  = 800;
 static const uint16_t screenHeight = 480;
 
-static const uint32_t buffer_size = screenWidth * 100 * sizeof(lv_color_t);
+static const uint32_t buffer_size = screenWidth * 20 * sizeof(lv_color_t);
 static lv_disp_draw_buf_t draw_buf;
 lv_color_t *buf;
+/*
+typedef struct  {
+  lv_disp_drv_t *disp; 
+  lv_area_t *area;
+  lv_color_t *color_p;
+} DisplayFlushInfo;
 
+QueueHandle_t displayFlushQueue = NULL;
+*/
 /* Display flushing */
 void my_disp_flush( lv_disp_drv_t *disp, const lv_area_t *area, lv_color_t *color_p )  {
     LCD_drawBitmap(area->x1, area->y1, area->x2, area->y2, &color_p->full);
 
     lv_disp_flush_ready(disp);
+    /*DisplayFlushInfo flushInfo = {
+      .disp = disp,
+      .area = (lv_area_t*)area,
+      .color_p = color_p
+    };
+    xQueueSend(displayFlushQueue, (void*)&flushInfo, 0); */
 }
 
 /*Read the touchpad*/
@@ -29,6 +43,21 @@ void my_touchpad_read( lv_indev_drv_t *indev_driver, lv_indev_data_t * data) {
   }
   data->state = touchPoint > 0 ? LV_INDEV_STATE_PR : LV_INDEV_STATE_REL;
 }
+/*
+TaskHandle_t bufferPutTaskHandle = NULL;
+
+void bufferPutTask(void *args) {
+  while(1) {
+    DisplayFlushInfo flushInfo;
+    if(xQueueReceive(displayFlushQueue, &flushInfo, portMAX_DELAY) != pdPASS) {
+      continue;
+    }
+
+    LCD_drawBitmap(flushInfo.area->x1, flushInfo.area->y1, flushInfo.area->x2, flushInfo.area->y2, &flushInfo.color_p->full);
+    lv_disp_flush_ready(flushInfo.disp);
+  }
+  vTaskDelete(NULL);
+}*/
 
 void setup() {
   Serial.begin(115200);
@@ -38,12 +67,19 @@ void setup() {
   touch.init();
 
   lv_init();
-  buf = (lv_color_t*) heap_caps_malloc(buffer_size, MALLOC_CAP_8BIT | MALLOC_CAP_SPIRAM);
+  buf = (lv_color_t*) heap_caps_malloc(buffer_size, MALLOC_CAP_8BIT | MALLOC_CAP_INTERNAL);
   if (!buf) {
     Serial.println("malloc fail!");
     while(1) delay(10);
   }
   lv_disp_draw_buf_init(&draw_buf, buf, NULL, buffer_size);
+
+  /*displayFlushQueue = xQueueCreate(5, sizeof(DisplayFlushInfo));
+  if(!displayFlushQueue) {
+    Serial.println("Display Flush Queue was not created and must not be used.");
+    while(1) delay(10);
+  }
+  xTaskCreatePinnedToCore(bufferPutTask, "bufferPutTask", 1024, NULL, 20, &bufferPutTaskHandle, 1 - ARDUINO_RUNNING_CORE);*/
 
   /*Initialize the display*/
   static lv_disp_drv_t disp_drv;
